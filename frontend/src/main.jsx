@@ -157,23 +157,29 @@ function App() {
 
   /* =======================================================
      LOAD QUESTIONS
+     Backend endpoint:
+     GET /api/questions?topic_id=ID
   ======================================================= */
 
   const loadQuestions = async (topicId) => {
-    if (!topicId) return;
+    if (!topicId) return [];
 
     try {
       setLoadingQuestions(true);
 
       const data = await apiRequest(
-        `${API}/api/questions/topic/${topicId}`
+        `${API}/api/questions?topic_id=${encodeURIComponent(
+          topicId
+        )}`
       );
 
-      setQuestions(
-        Array.isArray(data)
-          ? data
-          : data.questions || []
-      );
+      const list = Array.isArray(data)
+        ? data
+        : data.questions || [];
+
+      setQuestions(list);
+
+      return list;
     } catch (err) {
       console.error(err);
 
@@ -182,6 +188,8 @@ function App() {
       alert(
         `Failed to load questions: ${err.message}`
       );
+
+      return [];
     } finally {
       setLoadingQuestions(false);
     }
@@ -227,7 +235,7 @@ function App() {
     }
 
     alert(
-      `"${topicName}" topic database mein nahi hai. Pehle is topic ko Add Topic se create karo.`
+      `"${topicName}" topic is not available in the database. Please create this topic first using Add Topic.`
     );
   };
 
@@ -255,7 +263,7 @@ function App() {
 
   const createTopic = async () => {
     if (!topicName.trim()) {
-      alert("Please enter topic name.");
+      alert("Please enter a topic name.");
       return;
     }
 
@@ -327,7 +335,7 @@ function App() {
 
   const deleteTopic = async (topic) => {
     const confirmed = window.confirm(
-      `Delete "${topic.name}"?`
+      `Are you sure you want to delete "${topic.name}"?`
     );
 
     if (!confirmed) return;
@@ -380,17 +388,17 @@ function App() {
 
   const createQuestion = async () => {
     if (!active) {
-      alert("Please select a topic.");
+      alert("Please select a topic first.");
       return;
     }
 
     if (!questionText.trim()) {
-      alert("Please enter question.");
+      alert("Please enter a question.");
       return;
     }
 
     if (!answerText.trim()) {
-      alert("Please enter answer.");
+      alert("Please enter an answer.");
       return;
     }
 
@@ -428,12 +436,12 @@ function App() {
     if (!editingQuestion) return;
 
     if (!questionText.trim()) {
-      alert("Please enter question.");
+      alert("Please enter a question.");
       return;
     }
 
     if (!answerText.trim()) {
-      alert("Please enter answer.");
+      alert("Please enter an answer.");
       return;
     }
 
@@ -470,7 +478,7 @@ function App() {
 
   const deleteQuestion = async (question) => {
     const confirmed = window.confirm(
-      "Delete this question?"
+      "Are you sure you want to delete this question?"
     );
 
     if (!confirmed) return;
@@ -573,8 +581,19 @@ function App() {
       return;
     }
 
-    if (questions.length === 0) {
-      await loadQuestions(active.id);
+    let currentQuestions = questions;
+
+    if (currentQuestions.length === 0) {
+      currentQuestions = await loadQuestions(
+        active.id
+      );
+    }
+
+    if (!currentQuestions.length) {
+      alert(
+        "No questions are available for this topic. Please add questions before starting the mock test."
+      );
+      return;
     }
 
     setMockIndex(0);
@@ -1962,8 +1981,6 @@ function App() {
             <Trophy size={16} />
             Mock Test
           </button>
-
-          {/* CONTACT */}
 
           <button
             onClick={goToContact}
