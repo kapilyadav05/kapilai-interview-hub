@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta, timezone
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
 
 from ..config import settings
 
@@ -10,10 +10,7 @@ from ..config import settings
 # PASSWORD HASHING
 # =========================================================
 
-pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto"
-)
+password_hash = PasswordHash.recommended()
 
 
 # =========================================================
@@ -21,14 +18,14 @@ pwd_context = CryptContext(
 # =========================================================
 
 def hash_password(password: str) -> str:
-    return pwd_context.hash(password)
+    return password_hash.hash(password)
 
 
 def verify_password(
     plain_password: str,
     hashed_password: str
 ) -> bool:
-    return pwd_context.verify(
+    return password_hash.verify(
         plain_password,
         hashed_password
     )

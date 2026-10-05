@@ -6,4 +6,4 @@ pydantic-settings
 httpx
 python-dotenv
 python-jose[cryptography]
-passlib[bcrypt]
+pwdlib[argon2]
