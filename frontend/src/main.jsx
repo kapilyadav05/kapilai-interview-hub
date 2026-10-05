@@ -26,8 +26,10 @@ import {
   Mail,
   Phone,
   MessageCircle,
+  Users,
 } from "lucide-react";
 
+import Login from "./pages/Login";
 import "./styles.css";
 
 const API =
@@ -37,12 +39,22 @@ console.log("KapilAI API:", API);
 
 /* =========================================================
    API HELPER
+   JWT TOKEN AUTOMATICALLY ADDED
 ========================================================= */
 
 async function apiRequest(url, options = {}) {
+  const token = localStorage.getItem("kapilai_token");
+
   const response = await fetch(url, {
     headers: {
       "Content-Type": "application/json",
+
+      ...(token
+        ? {
+            Authorization: `Bearer ${token}`,
+          }
+        : {}),
+
       ...(options.headers || {}),
     },
     ...options,
@@ -96,6 +108,26 @@ function Card({ n, t, icon: Icon }) {
 
 function App() {
   const [topics, setTopics] = useState([]);
+
+  /* =======================================================
+     AUTH USER
+  ======================================================= */
+
+  const [user, setUser] = useState(() => {
+    try {
+      const savedUser =
+        localStorage.getItem("kapilai_user");
+
+      return savedUser
+        ? JSON.parse(savedUser)
+        : null;
+    } catch {
+      return null;
+    }
+  });
+
+  const isAdmin = user?.role === "admin";
+
   const [questions, setQuestions] = useState([]);
 
   const [active, setActive] = useState(null);
@@ -126,6 +158,33 @@ function App() {
   const [mockCompleted, setMockCompleted] = useState(false);
 
   const [mobileMenu, setMobileMenu] = useState(false);
+
+  /* =======================================================
+     USERS
+     ADMIN ONLY
+  ======================================================= */
+
+  const [users, setUsers] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  /* =======================================================
+     LOGOUT
+  ======================================================= */
+
+  const logout = () => {
+    localStorage.removeItem("kapilai_token");
+    localStorage.removeItem("kapilai_user");
+
+    setUser(null);
+
+    setTopics([]);
+    setQuestions([]);
+    setUsers([]);
+    setActive(null);
+    setAi("");
+    setView("dashboard");
+    setMobileMenu(false);
+  };
 
   /* =======================================================
      LOAD TOPICS
@@ -196,12 +255,59 @@ function App() {
   };
 
   /* =======================================================
+     LOAD USERS
+     ADMIN ONLY
+  ======================================================= */
+
+  const loadUsers = async () => {
+    if (!isAdmin) {
+      return;
+    }
+
+    try {
+      setLoadingUsers(true);
+
+      const data = await apiRequest(
+        `${API}/api/auth/users`
+      );
+
+      setUsers(
+        Array.isArray(data)
+          ? data
+          : data.users || []
+      );
+    } catch (err) {
+      console.error(err);
+
+      setUsers([]);
+
+      alert(
+        `Failed to load users: ${err.message}`
+      );
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  /* =======================================================
      INITIAL LOAD
   ======================================================= */
 
   useEffect(() => {
-    loadTopics();
-  }, []);
+    if (user) {
+      loadTopics();
+    }
+  }, [user]);
+
+  /* =======================================================
+     LOAD USERS WHEN ADMIN OPENS USERS PAGE
+  ======================================================= */
+
+  useEffect(() => {
+    if (user && isAdmin && view === "users") {
+      loadUsers();
+    }
+  }, [user, isAdmin, view]);
 
   /* =======================================================
      SELECT TOPIC
@@ -259,9 +365,15 @@ function App() {
 
   /* =======================================================
      TOPIC CREATE
+     ADMIN ONLY
   ======================================================= */
 
   const createTopic = async () => {
+    if (!isAdmin) {
+      alert("Only Admin can add topics.");
+      return;
+    }
+
     if (!topicName.trim()) {
       alert("Please enter a topic name.");
       return;
@@ -289,9 +401,15 @@ function App() {
 
   /* =======================================================
      TOPIC UPDATE
+     ADMIN ONLY
   ======================================================= */
 
   const updateTopic = async () => {
+    if (!isAdmin) {
+      alert("Only Admin can update topics.");
+      return;
+    }
+
     if (!editingTopic || !topicName.trim()) {
       return;
     }
@@ -331,9 +449,15 @@ function App() {
 
   /* =======================================================
      DELETE TOPIC
+     ADMIN ONLY
   ======================================================= */
 
   const deleteTopic = async (topic) => {
+    if (!isAdmin) {
+      alert("Only Admin can delete topics.");
+      return;
+    }
+
     const confirmed = window.confirm(
       `Are you sure you want to delete "${topic.name}"?`
     );
@@ -367,6 +491,11 @@ function App() {
   ======================================================= */
 
   const openCreateTopic = () => {
+    if (!isAdmin) {
+      alert("Only Admin can add topics.");
+      return;
+    }
+
     setEditingTopic(null);
     setTopicName("");
     setShowTopicModal(true);
@@ -377,6 +506,11 @@ function App() {
   ======================================================= */
 
   const openEditTopic = (topic) => {
+    if (!isAdmin) {
+      alert("Only Admin can edit topics.");
+      return;
+    }
+
     setEditingTopic(topic);
     setTopicName(topic.name);
     setShowTopicModal(true);
@@ -384,9 +518,15 @@ function App() {
 
   /* =======================================================
      QUESTION CREATE
+     ADMIN ONLY
   ======================================================= */
 
   const createQuestion = async () => {
+    if (!isAdmin) {
+      alert("Only Admin can add questions.");
+      return;
+    }
+
     if (!active) {
       alert("Please select a topic first.");
       return;
@@ -430,9 +570,15 @@ function App() {
 
   /* =======================================================
      QUESTION UPDATE
+     ADMIN ONLY
   ======================================================= */
 
   const updateQuestion = async () => {
+    if (!isAdmin) {
+      alert("Only Admin can update questions.");
+      return;
+    }
+
     if (!editingQuestion) return;
 
     if (!questionText.trim()) {
@@ -474,9 +620,15 @@ function App() {
 
   /* =======================================================
      DELETE QUESTION
+     ADMIN ONLY
   ======================================================= */
 
   const deleteQuestion = async (question) => {
+    if (!isAdmin) {
+      alert("Only Admin can delete questions.");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Are you sure you want to delete this question?"
     );
@@ -504,6 +656,11 @@ function App() {
   ======================================================= */
 
   const openCreateQuestion = () => {
+    if (!isAdmin) {
+      alert("Only Admin can add questions.");
+      return;
+    }
+
     setEditingQuestion(null);
     setQuestionText("");
     setAnswerText("");
@@ -515,6 +672,11 @@ function App() {
   ======================================================= */
 
   const openEditQuestion = (question) => {
+    if (!isAdmin) {
+      alert("Only Admin can edit questions.");
+      return;
+    }
+
     setEditingQuestion(question);
 
     setQuestionText(
@@ -761,13 +923,15 @@ function App() {
 
           <div className="heroButtons">
 
-            <button
-              className="primaryBtn"
-              onClick={openCreateTopic}
-            >
-              <Plus size={18} />
-              Add Topic
-            </button>
+            {isAdmin && (
+              <button
+                className="primaryBtn"
+                onClick={openCreateTopic}
+              >
+                <Plus size={18} />
+                Add Topic
+              </button>
+            )}
 
             <button
               className="secondaryBtn"
@@ -974,25 +1138,27 @@ function App() {
 
           <div className="quickActions">
 
-            <button
-              onClick={openCreateTopic}
-            >
-              <div className="quickIcon">
-                <Plus size={19} />
-              </div>
+            {isAdmin && (
+              <button
+                onClick={openCreateTopic}
+              >
+                <div className="quickIcon">
+                  <Plus size={19} />
+                </div>
 
-              <div>
-                <strong>
-                  Create Topic
-                </strong>
+                <div>
+                  <strong>
+                    Create Topic
+                  </strong>
 
-                <span>
-                  Add a new interview topic
-                </span>
-              </div>
+                  <span>
+                    Add a new interview topic
+                  </span>
+                </div>
 
-              <ArrowUpRight size={18} />
-            </button>
+                <ArrowUpRight size={18} />
+              </button>
+            )}
 
             <button
               onClick={() => setView("topics")}
@@ -1212,13 +1378,15 @@ function App() {
 
         </div>
 
-        <button
-          className="primaryBtn"
-          onClick={openCreateTopic}
-        >
-          <Plus size={18} />
-          Add Topic
-        </button>
+        {isAdmin && (
+          <button
+            className="primaryBtn"
+            onClick={openCreateTopic}
+          >
+            <Plus size={18} />
+            Add Topic
+          </button>
+        )}
 
       </div>
 
@@ -1250,7 +1418,9 @@ function App() {
           </h3>
 
           <p>
-            Create your first interview topic.
+            {isAdmin
+              ? "Create your first interview topic."
+              : "No interview topics are available."}
           </p>
         </div>
       ) : (
@@ -1279,29 +1449,31 @@ function App() {
                 </p>
               </div>
 
-              <div className="topicActions">
+              {isAdmin && (
+                <div className="topicActions">
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    openEditTopic(topic);
-                  }}
-                  title="Edit topic"
-                >
-                  <Edit3 size={16} />
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openEditTopic(topic);
+                    }}
+                    title="Edit topic"
+                  >
+                    <Edit3 size={16} />
+                  </button>
 
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    deleteTopic(topic);
-                  }}
-                  title="Delete topic"
-                >
-                  <Trash2 size={16} />
-                </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      deleteTopic(topic);
+                    }}
+                    title="Delete topic"
+                  >
+                    <Trash2 size={16} />
+                  </button>
 
-              </div>
+                </div>
+              )}
 
               <ChevronRight size={19} />
 
@@ -1347,13 +1519,15 @@ function App() {
 
         </div>
 
-        <button
-          className="primaryBtn"
-          onClick={openCreateQuestion}
-        >
-          <Plus size={18} />
-          Add Question
-        </button>
+        {isAdmin && (
+          <button
+            className="primaryBtn"
+            onClick={openCreateQuestion}
+          >
+            <Plus size={18} />
+            Add Question
+          </button>
+        )}
 
       </div>
 
@@ -1417,17 +1591,20 @@ function App() {
           </h3>
 
           <p>
-            Add a question or generate
-            questions using AI.
+            {isAdmin
+              ? "Add a question or generate questions using AI."
+              : "No questions are available for this topic."}
           </p>
 
-          <button
-            className="primaryBtn"
-            onClick={openCreateQuestion}
-          >
-            <Plus size={17} />
-            Add First Question
-          </button>
+          {isAdmin && (
+            <button
+              className="primaryBtn"
+              onClick={openCreateQuestion}
+            >
+              <Plus size={17} />
+              Add First Question
+            </button>
+          )}
 
         </div>
       ) : (
@@ -1446,31 +1623,33 @@ function App() {
                     Q{index + 1}
                   </span>
 
-                  <div className="questionActions">
+                  {isAdmin && (
+                    <div className="questionActions">
 
-                    <button
-                      onClick={() =>
-                        openEditQuestion(
-                          question
-                        )
-                      }
-                      title="Edit question"
-                    >
-                      <Edit3 size={16} />
-                    </button>
+                      <button
+                        onClick={() =>
+                          openEditQuestion(
+                            question
+                          )
+                        }
+                        title="Edit question"
+                      >
+                        <Edit3 size={16} />
+                      </button>
 
-                    <button
-                      onClick={() =>
-                        deleteQuestion(
-                          question
-                        )
-                      }
-                      title="Delete question"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                      <button
+                        onClick={() =>
+                          deleteQuestion(
+                            question
+                          )
+                        }
+                        title="Delete question"
+                      >
+                        <Trash2 size={16} />
+                      </button>
 
-                  </div>
+                    </div>
+                  )}
 
                 </div>
 
@@ -1704,11 +1883,300 @@ function App() {
   );
 
   /* =======================================================
+     USERS PAGE
+     ADMIN ONLY
+  ======================================================= */
+
+  const usersPage = (
+    <div className="page">
+
+      <div className="pageHeader">
+
+        <div>
+
+          <span className="pageEyebrow">
+            USER MANAGEMENT
+          </span>
+
+          <h1>
+            Users
+          </h1>
+
+          <p>
+            View registered users and their
+            account roles.
+          </p>
+
+        </div>
+
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: "10px",
+          }}
+        >
+          <div
+            className="sectionIcon"
+            style={{
+              width: "48px",
+              height: "48px",
+            }}
+          >
+            <Users size={23} />
+          </div>
+        </div>
+
+      </div>
+
+      {loadingUsers ? (
+        <div className="empty">
+          <Users size={42} />
+
+          <h3>
+            Loading users...
+          </h3>
+
+          <p>
+            Please wait while user data is loading.
+          </p>
+        </div>
+      ) : users.length === 0 ? (
+        <div className="empty">
+
+          <Users size={42} />
+
+          <h3>
+            No users found
+          </h3>
+
+          <p>
+            There are no registered users yet.
+          </p>
+
+        </div>
+      ) : (
+        <div
+          className="sectionCard"
+          style={{
+            overflowX: "auto",
+          }}
+        >
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              gap: "16px",
+              marginBottom: "20px",
+              flexWrap: "wrap",
+            }}
+          >
+
+            <div>
+
+              <span className="sectionEyebrow">
+                <Users size={14} />
+                REGISTERED ACCOUNTS
+              </span>
+
+              <h2
+                style={{
+                  margin: "6px 0 0",
+                }}
+              >
+                All Users
+              </h2>
+
+            </div>
+
+            <div
+              style={{
+                fontSize: "14px",
+                fontWeight: 700,
+                padding: "8px 13px",
+                borderRadius: "10px",
+                background: "rgba(15, 23, 42, 0.06)",
+              }}
+            >
+              {users.length}{" "}
+              {users.length === 1
+                ? "User"
+                : "Users"}
+            </div>
+
+          </div>
+
+          <table
+            style={{
+              width: "100%",
+              minWidth: "700px",
+              borderCollapse: "collapse",
+            }}
+          >
+
+            <thead>
+
+              <tr>
+
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "14px",
+                    borderBottom:
+                      "1px solid rgba(15, 23, 42, 0.10)",
+                    fontSize: "13px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Name
+                </th>
+
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "14px",
+                    borderBottom:
+                      "1px solid rgba(15, 23, 42, 0.10)",
+                    fontSize: "13px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Email
+                </th>
+
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "14px",
+                    borderBottom:
+                      "1px solid rgba(15, 23, 42, 0.10)",
+                    fontSize: "13px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Role
+                </th>
+
+                <th
+                  style={{
+                    textAlign: "left",
+                    padding: "14px",
+                    borderBottom:
+                      "1px solid rgba(15, 23, 42, 0.10)",
+                    fontSize: "13px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.05em",
+                  }}
+                >
+                  Created
+                </th>
+
+              </tr>
+
+            </thead>
+
+            <tbody>
+
+              {users.map((item) => (
+
+                <tr key={item.id}>
+
+                  <td
+                    style={{
+                      padding: "16px 14px",
+                      borderBottom:
+                        "1px solid rgba(15, 23, 42, 0.07)",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {item.name}
+                  </td>
+
+                  <td
+                    style={{
+                      padding: "16px 14px",
+                      borderBottom:
+                        "1px solid rgba(15, 23, 42, 0.07)",
+                    }}
+                  >
+                    {item.email}
+                  </td>
+
+                  <td
+                    style={{
+                      padding: "16px 14px",
+                      borderBottom:
+                        "1px solid rgba(15, 23, 42, 0.07)",
+                    }}
+                  >
+
+                    <span
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        padding: "6px 10px",
+                        borderRadius: "999px",
+                        fontSize: "12px",
+                        fontWeight: 800,
+                        textTransform: "capitalize",
+                        background:
+                          item.role === "admin"
+                            ? "rgba(124, 58, 237, 0.12)"
+                            : "rgba(15, 118, 110, 0.10)",
+                      }}
+                    >
+                      {item.role}
+                    </span>
+
+                  </td>
+
+                  <td
+                    style={{
+                      padding: "16px 14px",
+                      borderBottom:
+                        "1px solid rgba(15, 23, 42, 0.07)",
+                    }}
+                  >
+                    {item.created_at
+                      ? new Date(
+                          item.created_at
+                        ).toLocaleDateString(
+                          "en-IN",
+                          {
+                            day: "2-digit",
+                            month: "short",
+                            year: "numeric",
+                          }
+                        )
+                      : "—"}
+                  </td>
+
+                </tr>
+
+              ))}
+
+            </tbody>
+
+          </table>
+
+        </div>
+      )}
+
+    </div>
+  );
+
+  /* =======================================================
      TOPIC MODAL
   ======================================================= */
 
   const topicModal =
-    showTopicModal && (
+    showTopicModal &&
+    isAdmin && (
       <div className="modalOverlay">
 
         <div className="modal">
@@ -1787,7 +2255,8 @@ function App() {
   ======================================================= */
 
   const questionModal =
-    showQuestionModal && (
+    showQuestionModal &&
+    isAdmin && (
       <div className="modalOverlay">
 
         <div className="modal largeModal">
@@ -1878,9 +2347,29 @@ function App() {
   ======================================================= */
 
   const navigate = (target) => {
+
+    if (target === "users" && !isAdmin) {
+      alert("Admin access required.");
+      return;
+    }
+
     setView(target);
     setMobileMenu(false);
   };
+
+  /* =======================================================
+     LOGIN CHECK
+  ======================================================= */
+
+  if (!user) {
+    return (
+      <Login
+        onLogin={(loggedInUser) => {
+          setUser(loggedInUser);
+        }}
+      />
+    );
+  }
 
   /* =======================================================
      APP RETURN
@@ -1982,12 +2471,59 @@ function App() {
             Mock Test
           </button>
 
+          {/* ADMIN ONLY USERS */}
+
+          {isAdmin && (
+            <button
+              className={
+                view === "users"
+                  ? "navActive"
+                  : ""
+              }
+              onClick={() =>
+                navigate("users")
+              }
+            >
+              <Users size={16} />
+              Users
+            </button>
+          )}
+
           <button
             onClick={goToContact}
           >
             <MessageCircle size={16} />
             Contact
           </button>
+
+          {/* USER INFO */}
+
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              marginLeft: "10px",
+            }}
+          >
+            <span
+              style={{
+                fontSize: "13px",
+                fontWeight: 700,
+              }}
+            >
+              {user?.name}
+              {" "}
+              ({user?.role})
+            </span>
+
+            <button
+              onClick={logout}
+              title="Logout"
+            >
+              Logout
+            </button>
+          </div>
 
         </nav>
 
@@ -2008,6 +2544,10 @@ function App() {
 
         {view === "mock" &&
           mockPage}
+
+        {view === "users" &&
+          isAdmin &&
+          usersPage}
 
       </main>
 

@@ -12,6 +12,11 @@ class Settings(BaseSettings):
     ollama_model: str = "llama3.2:3b"
     ollama_enabled: bool = True
 
+    # JWT Authentication
+    jwt_secret_key: str = "kapilai-development-secret-key"
+    jwt_algorithm: str = "HS256"
+    access_token_expire_minutes: int = 1440
+
     model_config = SettingsConfigDict(
         env_file=".env",
         extra="ignore"

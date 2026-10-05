@@ -5,6 +5,9 @@ from ..database import get_db
 from ..models import Question, Topic
 from ..schemas import QuestionCreate, QuestionOut
 
+# ADDED
+from ..auth.dependencies import require_admin
+
 
 router = APIRouter(
     prefix="/api/questions",
@@ -61,7 +64,8 @@ def get_questions_by_topic(
 @router.post("", response_model=QuestionOut, status_code=201)
 def create_question(
     data: QuestionCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin)  # ADDED
 ):
     if not db.get(Topic, data.topic_id):
         raise HTTPException(
@@ -83,7 +87,8 @@ def create_question(
 def update_question(
     question_id: int,
     data: QuestionCreate,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin)  # ADDED
 ):
     item = db.get(Question, question_id)
 
@@ -112,7 +117,8 @@ def update_question(
 @router.delete("/{question_id}")
 def delete_question(
     question_id: int,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    admin=Depends(require_admin)  # ADDED
 ):
     item = db.get(Question, question_id)
 

@@ -3,7 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .database import Base, engine, SessionLocal
 from .models import Topic, Question
-from .routes import topics, questions, ai
+from .routes import topics, questions, ai, auth
 
 
 app = FastAPI(
@@ -157,6 +157,7 @@ def seed():
 app.include_router(topics.router)
 app.include_router(questions.router)
 app.include_router(ai.router)
+app.include_router(auth.router)
 
 
 # --------------------------------------------------
